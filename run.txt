@@ -1,0 +1,8 @@
+shelllit
+
+arm-linux-gnueabi-gcc -o shelllit shelllit.s -static
+qemu-arm shelllit
+
+shell
+
+
