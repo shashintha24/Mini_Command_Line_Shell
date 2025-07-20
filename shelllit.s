@@ -20,10 +20,20 @@ cmd_clear:   .asciz "clear"
 cmd_hex:     .asciz "hex"
 cmd_avg:     .asciz "avg"
 
+cal_prompt1:      .asciz "Enter first number: "
+cal_prompt2:      .asciz "Enter operator (+ - * /): "
+cal_prompt3:      .asciz "Enter second number: "
+cal_result_msg:   .asciz "Result: %d\n"
+format_num:   .asciz "%d"
+format_op:    .asciz " %c"
+
 print_num:   .asciz "%ul"
 
 .bss
 dest_buffer: .space 32
+num1:  .skip 4
+num2:  .skip 4
+op:    .skip 1
 
 .text
 .global main
@@ -83,6 +93,8 @@ rev_done:
     mov pc, lr
 
 main:
+    b calcultor
+
     b main_loop
 
     sub sp, sp, #24     @ Space for 6 registers
@@ -275,6 +287,83 @@ strcmp_not_equal:
 strcmp_end:
     pop {r2, r3, lr}
     bx lr
+
+calcultor:
+    push {lr}
+
+    @ --- Input first number ---
+    ldr r0, =cal_prompt1
+    bl printf
+    ldr r0, =format_num
+    ldr r1, =num1
+    bl scanf
+
+    @ --- Input operator ---
+    ldr r0, =cal_prompt2
+    bl printf
+    ldr r0, =format_op
+    ldr r1, =op
+    bl scanf
+
+    @ --- Input second number ---
+    ldr r0, =cal_prompt3
+    bl printf
+    ldr r0, =format_num
+    ldr r1, =num2
+    bl scanf
+
+    @ --- Load values into registers ---
+    ldr r0, =num1
+    ldr r0, [r0]
+    ldr r1, =num2
+    ldr r1, [r1]
+    ldr r2, =op
+    ldrb r2, [r2]
+
+    @ --- Perform operation ---
+    cmp r2, #'+'     
+    beq do_add
+    cmp r2, #'-'
+    beq do_sub
+    cmp r2, #'*'
+    beq do_mul
+    cmp r2, #'/'
+    beq do_div
+
+    b exit
+
+do_add:
+    add r3, r0, r1
+    b print_result
+
+do_sub:
+    sub r3, r0, r1
+    b print_result
+
+do_mul:
+    mul r3, r0, r1
+    b print_result
+
+do_div:
+    mov r3, #0
+div_loop:
+    cmp r0, r1
+    blt print_result
+    sub r0, r0, r1
+    add r3, r3, #1
+    b div_loop
+
+print_result:
+    ldr r0, =cal_result_msg
+    mov r1, r3
+    bl printf
+    b cal_exit
+
+cal_exit:
+    pop {lr}
+    bx lr
+
+
 
 
 exit:
