@@ -33,6 +33,7 @@ print_num:   .asciz "%ul"
 dest_buffer: .space 32
 num1:  .skip 4
 num2:  .skip 4
+result:.skip 4
 op:    .skip 1
 
 .text
@@ -120,7 +121,7 @@ main:
     bl printf
     
     ldr r0, =input_buffer
-    bl gets
+    bl scanf
     bl atoi 		@ atoi converts string to an integer
     mov r4, r0          @ String count
 
@@ -134,7 +135,7 @@ main:
 
 main_loop:
     ldr r0, =cmd_buf
-    bl gets
+    bl scanf
     
     @hello
     ldr r0, =cmd_buf     @ r0 → input command
@@ -176,7 +177,7 @@ loop:
     bl printf
     
     ldr r0, =input_buffer
-    bl gets
+    bl scanf
     
     ldr r0, =input_buffer
     bl reverse_string
@@ -297,7 +298,7 @@ calcultor:
     ldr r0, =format_num
     ldr r1, =num1
     bl scanf
-
+next:
     @ --- Input operator ---
     ldr r0, =cal_prompt2
     bl printf
@@ -329,8 +330,11 @@ calcultor:
     beq do_mul
     cmp r2, #'/'
     beq do_div
-
+    @cmp r2,#0
+    ldr r0,=prompt
+    bl printf
     b exit
+    
 
 do_add:
     add r3, r0, r1
@@ -354,9 +358,19 @@ div_loop:
     b div_loop
 
 print_result:
+    mov r4, r3
     ldr r0, =cal_result_msg
     mov r1, r3
     bl printf
+    ldr r1,=num1
+    mov r2,r3
+    str r2, [r1]
+
+    ldr r0, =num1       @ load address of num1
+    mov r1,r4          @ example value
+    str r1, [r0] 
+ 
+    b next
     b cal_exit
 
 cal_exit:
