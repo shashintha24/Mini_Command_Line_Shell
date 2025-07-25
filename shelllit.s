@@ -9,7 +9,7 @@ newline:        .asciz "\n"
 
 prompt:      .asciz "shell> "
 hello_msg:   .asciz "Hello World!\n"
-help_text:   .asciz "Available commands: hello, help, clear, exit, calc, game, reverse\n"
+help_text:   .asciz "Available commands: hello, help, clear, exit, calc, game\n"
 exit_msg:    .asciz "Exiting shell...\n"
 clear_cmd:   .asciz "\033[2J\033[H"
 
