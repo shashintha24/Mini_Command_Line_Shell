@@ -71,19 +71,17 @@ strlen_end:
 main:
     mov r0 ,#0
 main_loop:
-    
-    ldr r0, =prompt
-    bl printf
-main_comeback:
-    ldr r0, =cmd_buf
-    bl gets
+    ldr r4, =prompt
+    bl print_str_syscall
+    ldr r4, =cmd_buf
+    bl gets_syscall
     
     @hello
     ldr r0, =cmd_buf     @ r0 → input command
     ldr r1, =cmd_hello   @ r1 → "hello"
     bl strcmp            @ compare input vs "hello"
     cmp r0, #0
-    beq do_hello         @ If equal, run hello handler
+    beq do_hello         @ If equal
 
     @help
     ldr r0, =cmd_buf
@@ -121,59 +119,109 @@ main_comeback:
     beq Tic_tac_toe
     
     b main_loop
+
+print_str_syscall:
+    push {lr}
+    mov r0, r4             @ Pass string pointer to r0
+    bl strlen              @ strlen returns length in r0
+    mov r2, r0             @ r2 = length
+    mov r0, #1             @ stdout
+    mov r1, r4             @ pointer to string
+    mov r7, #4             @ syscall: write
+    svc #0
+    pop {lr}
+    bx lr
+
+strlen_p:
+    push {r1, r2, lr}
+    mov r1, r0             @ r1 = pointer
+.loop:
+    ldrb r2, [r1], #1      @ Load byte, post-increment pointer
+    cmp r2, #0             @ Check for null terminator
+    bne .loop
+    sub r0, r1, r0         @ r1 - r0 = length + 1
+    sub r0, r0, #1         @ Adjust length to exclude null byte
+    pop {r1, r2, lr}
+    bx lr
+
+
+read_str_syscall:
+    push {lr}
+    mov r0, #0         @ stdin
+    mov r1, r4         @ buffer
+    mov r2, #99        @ max bytes (leave 1 for null)
+    mov r7, #3         @ syscall: read
+    svc #0             @ r0 = bytes read
+
+    @ Null-terminate at buffer + bytes_read
+    add r1, r4, r0
+    mov r2, #0
+    strb r2, [r1]
+
+    pop {lr}
+    bx lr
+
+gets_syscall:
+    push {r1, r2, r3, lr}
+    mov r0, #0          @ stdin
+    mov r1, r4          @ buffer
+    mov r2, #99         @ max 99 bytes to read (reserve space for \0)
+    mov r7, #3          @ syscall: read
+    svc #0              @ r0 = number of bytes read
+
+    mov r3, r4          @ r3 = buffer ptr
+    mov r1, r0          @ r1 = bytes read
+    mov r2, #0          @ null byte
+
+.loop_g:
+    ldrb r0, [r3]
+    cmp r0, #10         @ check for newline (\n)
+    beq .replace_g
+    add r3, r3, #1
+    subs r1, r1, #1
+    bne .loop_g
+    b .done_g
+
+.replace_g:
+    strb r2, [r3]       @ replace '\n' with '\0'
+
+.done_g:
+    pop {r1, r2, r3, lr}
+    bx lr
     
 invalid:
-    ldr r0, =invalid_num
-    bl printf
+    ldr r4, =invalid_num
+    bl print_str_syscall
 
 do_hello:
     push {lr}
-    ldr r0, =hello_msg
-    bl printf
+    ldr r4, =hello_msg
+    bl print_str_syscall
     pop {lr}
     bx lr
 
 do_help:
     push {lr}
-    ldr r0, =help_text
-    bl printf
+    ldr r4, =help_text
+    bl print_str_syscall
     pop {lr}
     bx lr
 
 do_clear:
     push {lr}
-    ldr r0, =clear_cmd
-    bl printf
+    ldr r4, =clear_cmd
+    bl print_str_syscall
     pop {lr}
     bx lr
 
 do_exit:
     push {lr}
-    ldr r0, =exit_msg
-    bl printf
+    ldr r4, =exit_msg
+    bl print_str_syscall
     mov r7, #1      @ syscall exit
     mov r0, #0
     svc #0
 
-do_hex:
-    push {lr}
-    mov r0, #42     @ decimal 42 immediate
-    bl printf
-    ldr r0, =newline
-    bl printf
-    pop {lr}
-    bx lr
-
-do_avg:
-    push {r4, lr}
-    mov r0, #10
-    mov r1, #20
-    mov r2, #30
-    add r3, r0, r1
-    add r3, r3, r2      @ r3 = sum = 60
-
-    mov r4, #3          @ divisor
-    mov r0, #0          @ quotient
 
 strcpy:
     sub sp,sp, #4     @ adjust stack for 1 item
@@ -218,15 +266,15 @@ calculator:
     push {lr}
 
     @ --- Input first number ---
-    ldr r0, =cal_prompt1
-    bl printf
+    ldr r4, =cal_prompt1
+    bl print_str_syscall
     ldr r0, =format_num
     ldr r1, =num1
     bl scanf
 next:
     @ --- Input operator ---
-    ldr r0, =cal_prompt2
-    bl printf
+    ldr r4, =cal_prompt2
+    bl print_str_syscall
     ldr r0, =format_op
     ldr r1, =op
     bl scanf
@@ -239,8 +287,8 @@ next:
 
 
     @ --- Input second number ---
-    ldr r0, =cal_prompt3
-    bl printf
+    ldr r4, =cal_prompt3
+    bl print_str_syscall
     ldr r0, =format_num
     ldr r1, =num2
     bl scanf
@@ -305,7 +353,7 @@ print_result:
 
 cal_exit:
     pop {lr}
-    b main_comeback
+    b main
 
 
 
@@ -586,8 +634,8 @@ not_diagonal2_found_winner:
     bx lr
 
 found_winner:
-    ldr r0, =newline
-    bl printf
+    ldr r4, =newline
+    bl print_str_syscall
 
     
     cmp r7, #-1
@@ -595,10 +643,10 @@ found_winner:
     ldr r0, =winner_msg          @ winner found
     ldr r1,='X'
     bl printf
-    ldr r0, =newline
-    bl printf
+    ldr r4, =newline
+    bl print_str_syscall
     pop {r4, r5, r6, r7, r8, lr}
-    b main_comeback
+    b main
 Ovalue:
     ldr r0, =winner_msg          @ winner found
     ldr r1,='O'
@@ -606,9 +654,11 @@ Ovalue:
     ldr r0, =newline
     bl printf
     pop {r4, r5, r6, r7, r8, lr}
-    b main_comeback
+    b main
 exit:
 
 .data
 int_fmt:    .asciz "%d"
 str_fmt:    .asciz "%s"
+
+.section .note.GNU-stack,"",%progbits
